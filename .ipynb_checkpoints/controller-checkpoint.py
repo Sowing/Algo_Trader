@@ -43,7 +43,7 @@ def select_page(current_user):
             return      
         amount = view.get_amount('Buy')
         #print(amount)
-        date = input('Please enter date: ')
+        date = '2018-07-30'
         model.buy(current_user, currency, amount, date)
         return
 
@@ -55,29 +55,24 @@ def select_page(current_user):
             print("Going to selection page")
             return    
         amount = view.get_amount('Sell')
-        date = input('Please enter date: ')
+        date = '2018-07-30'
         model.sell(current_user, currency, amount, date)
         return
-    elif choice == 'D':
-        #Delete all transactions
-        model.delete_all_transactions()
-        _ = input('\n\nHit any key to return')
-        return
+        '''
     elif choice == 'L':
-        #lookup currency price
-        date = input('Please enter date: ')
-        model.get_all_currency_information(date)
+        #lookup ticker
+        model.get_all_ticker_information()
         _ = input("\n\nHit any key to return")
         return
-        '''
     elif choice == 'Q':
         #Quote symbol
         return
         '''
+
     elif choice == 'V':
         #View balance
         #print("You currently have %s in your balance" % model.get_balance(current_user))
-        date = input('Please enter date: ')
+        date = '2018-08-03'
         model.check_portfolio(current_user, date)
         _ = input('\n\nHit any key to return')
         return 
@@ -87,14 +82,13 @@ def select_page(current_user):
         print('Not working yet')
         _ = input('\n\nHit any key to return')
         return
-    '''
     elif choice == 'E':
         # quit
         sys.exit()
     else:
         _ = input('Entered wrong choice!!! Hit any key to retry')
         return
-
+    '''
 while 1:
     current_user = welcome()
     if current_user:

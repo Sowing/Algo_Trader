@@ -3,8 +3,6 @@ import sqlite3
 import os
 import pandas as pd
 import time
-import API
-import json
 
 def check_user(name):
     connection = sqlite3.connect('algoforexdb.db')
@@ -82,52 +80,17 @@ def send_to_database(registration):
 
 def check_balance(user, date):
     #calculate g/l in usd, and return balance
-    '''
-    USER_ID = 1
-    URL = 'http://apilayer.net/api/'
-    SOURCE = 'USD'
-    API_KEY = '45d4584351c4a10188d67c228f22b2a9'
-    TYPE = 'live'
-    Total_USD_worth = 0
-    for key in currency_holdings:
-        CURRENCY = [key]
-        current_price = json.loads(API.get_currency_data(URL, SOURCE, API_KEY, TYPE, CURRENCY))['quotes']['USD%s' % key]
-        Total_USD_worth = Total_USD_worth + currency_holdings[key]/current_price
-    print('Worth total of %s USD' % Total_USD_worth)
-    '''
-    connection = sqlite3.connect('algoforexdb.db')
-    cursor = connection.cursor()
-    u_id = cursor.execute('''SELECT u_id FROM users WHERE username = ? ''', [user]).fetchone()[0]
-    all_transactions = cursor.execute('''SELECT * FROM transactions join price_table on transactions.p_id = price_table.p_id WHERE transactions.u_id = ? ''', [u_id]).fetchall()
-    df = pd.DataFrame(all_transactions, columns=['t_id', 'u_id', 'b/s', 'amount', 'p_id', 'timestamp_', 'p_id_r', 'st_id', 'price', 'date'])
-    currency_holdings = {'USD':0}
-    for index, row in df.iterrows():
-        transaction_time = time.strptime(row['date'], "%Y-%m-%d")
-        current_time = time.strptime(date, "%Y-%m-%d")
-        #if date is smaller than current given date
-        if transaction_time > current_time:
-            continue
-        currency = cursor.execute('''SELECT target FROM source_target_table WHERE st_id = ? ''', [row['st_id']]).fetchone()[0]
-        if currency not in currency_holdings:
-            currency_holdings[currency] = 0
-        if row['b/s'] == 'b':
-            currency_holdings[currency] = currency_holdings[currency] + row['amount']
-            currency_holdings['USD'] =  currency_holdings['USD'] - row['amount']/row['price']
-        elif row['b/s'] == 's':
-            currency_holdings[currency] = currency_holdings[currency] - row['amount'] 
-            currency_holdings['USD'] =  currency_holdings['USD'] + row['amount']/row['price']
-    #Calculate usd
-    starting_balance = cursor.execute('''SELECT balance FROM users WHERE username = ? ''', [user]).fetchone()[0]
-    return currency_holdings['USD'] + starting_balance
+    return 0
 
 def check_portfolio(user, date):
     #aggregate all b/s information and give balance on given date
     connection = sqlite3.connect('algoforexdb.db')
     cursor = connection.cursor()
     u_id = cursor.execute('''SELECT u_id FROM users WHERE username = ? ''', [user]).fetchone()[0]
+    print(u_id)
     all_transactions = cursor.execute('''SELECT * FROM transactions join price_table on transactions.p_id = price_table.p_id WHERE transactions.u_id = ? ''', [u_id]).fetchall()
     df = pd.DataFrame(all_transactions, columns=['t_id', 'u_id', 'b/s', 'amount', 'p_id', 'timestamp_', 'p_id_r', 'st_id', 'price', 'date'])
-    currency_holdings = {'USD':0}
+    currency_holdings = {}
     for index, row in df.iterrows():
         transaction_time = time.strptime(row['date'], "%Y-%m-%d")
         current_time = time.strptime(date, "%Y-%m-%d")
@@ -139,19 +102,11 @@ def check_portfolio(user, date):
             currency_holdings[currency] = 0
         if row['b/s'] == 'b':
             currency_holdings[currency] = currency_holdings[currency] + row['amount']
-            currency_holdings['USD'] =  currency_holdings['USD'] - row['amount']/row['price']
         elif row['b/s'] == 's':
             currency_holdings[currency] = currency_holdings[currency] - row['amount'] 
-            currency_holdings['USD'] =  currency_holdings['USD'] + row['amount']/row['price']
     print(currency_holdings)       
     #Calculate usd
-    starting_balance = cursor.execute('''SELECT balance FROM users WHERE username = ? ''', [user]).fetchone()[0]
-    Total_USD_worth = 0
-    for key in currency_holdings:
-        CURRENCY = [key]
-        current_price = cursor.execute('''SELECT price from price_table join source_target_table on price_table.st_id = source_target_table.st_id where source_target_table.target = ? and price_table.timestamp = ?''', (key, date)).fetchone()[0]
-        Total_USD_worth = Total_USD_worth + currency_holdings[key]/current_price
-    print('Worth total of %s USD' % (Total_USD_worth + starting_balance))
+
     #Calculate current worth
     return
 
@@ -160,7 +115,7 @@ def buy(user, currency, amount, date):
     connection = sqlite3.connect('algoforexdb.db')
     cursor = connection.cursor()
     starting_balance = cursor.execute('''SELECT balance FROM users WHERE username = ? ''', [user]).fetchone()[0]
-    if check_balance(user, date)<= 0:
+    if check_balance(user, date) + starting_balance <= 0:
         print("You do not have enough balance")
         _ = input("Press anykey to continue")
         return
@@ -219,19 +174,11 @@ def sell(user, currency, amount, date):
         return
     return
 
-def delete_all_transactions():
-    connection = sqlite3.connect('algoforexdb.db')
-    cursor = connection.cursor()
-    cursor.execute('''DELETE FROM transactions;''')
-    cursor.execute('''VACUUM;''')
-    connection.commit()
-    print('Successfully deleted all transactions')
 
-def get_all_currency_information(date):
-    connection = sqlite3.connect('algoforexdb.db')
-    cursor = connection.cursor()
-    current_price = cursor.execute('''SELECT source, target, price from price_table join source_target_table on price_table.st_id = source_target_table.st_id where price_table.timestamp = ?''', (date, )).fetchall()
-    for price in current_price:
-        print('1 %s equals %s %s\n\r' % (price[0], price[2], price[1]))
-    connection.commit()
+
+
+
+
+
+
 
