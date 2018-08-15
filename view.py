@@ -34,7 +34,8 @@ def select():
     print('''[B] Buy\n''')
     print('''[S] Sell\n''')
     print('''[D] Delete All transactions\n''')
-    print('''[L] Look-up pairs\n''')
+    print('''[L] Look-up currency price on a date\n''')
+    print('''[LR] Look-up real-time currency price\n''')
     print('''[V] View Balance\n''')
     print('''[P] See P/L\n''')
     print('''[E] Exit\n\n''')
@@ -50,4 +51,8 @@ def get_amount(type):
 
     amount = input('How much money you want to %s (In USD)?' % type)
     print("You would like to %s %s USD" % (type,amount))
+    return amount
+
+def enter_date():
+    amount = input('Please enter date (From 2017-07-04 to 2018-08-02): ')
     return amount

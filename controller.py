@@ -2,6 +2,8 @@
 import model
 import view
 import sys
+from datetime import date as date_module
+import API
 
 def welcome():
     choice = view.welcome()
@@ -43,7 +45,7 @@ def select_page(current_user):
             return      
         amount = view.get_amount('Buy')
         #print(amount)
-        date = input('Please enter date: ')
+        date = view.enter_date()
         model.buy(current_user, currency, amount, date)
         return
 
@@ -55,7 +57,7 @@ def select_page(current_user):
             print("Going to selection page")
             return    
         amount = view.get_amount('Sell')
-        date = input('Please enter date: ')
+        date = view.enter_date()
         model.sell(current_user, currency, amount, date)
         return
     elif choice == 'D':
@@ -65,29 +67,44 @@ def select_page(current_user):
         return
     elif choice == 'L':
         #lookup currency price
-        date = input('Please enter date: ')
+        date = view.enter_date()
         model.get_all_currency_information(date)
         _ = input("\n\nHit any key to return")
         return
-        '''
-    elif choice == 'Q':
-        #Quote symbol
+        
+    elif choice == 'LR':
+        #lookup currency real-time price
+        currency = input('Please enter currency symbol (JPY, EUR and etc.): ')
+        model.get_real_time_currency_information(currency)
+        _ = input("\n\nHit any key to return")
         return
-        '''
+        
     elif choice == 'V':
         #View balance
         #print("You currently have %s in your balance" % model.get_balance(current_user))
-        date = input('Please enter date: ')
-        model.check_portfolio(current_user, date)
+        date = view.enter_date()
+        try:
+            model.check_portfolio(current_user, date)
+        except:
+            print('No price found')
         _ = input('\n\nHit any key to return')
         return 
-    '''
-    elif choice == 'See P/L':
+
+    elif choice == 'P':
         #See P/L
-        print('Not working yet')
+        print('Input date range to see perforance in these range')
+        start_date = view.enter_date()
+        end_date = view.enter_date()
+        start_date = list(map(int,start_date.split('-')))
+        end_date = list(map(int,end_date.split('-')))
+        start_date = date_module(start_date[0], start_date[1], start_date[2])
+        end_date = date_module(end_date[0], end_date[1], end_date[2])
+        for single_date in API.daterange(start_date, end_date):
+            DATE = single_date.strftime("%Y-%m-%d")
+            print('On Date %s you have %s' % (DATE, model.check_portfolio(current_user,DATE,'calculation')))
         _ = input('\n\nHit any key to return')
         return
-    '''
+
     elif choice == 'E':
         # quit
         sys.exit()

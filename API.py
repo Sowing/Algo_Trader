@@ -52,8 +52,8 @@ if __name__ == '__main__':
     TYPE = 'historical'
     
 
-    start_date = date(2017, 7, 4)
-    end_date = date(2018, 7, 3)
+    start_date = date(2018, 7, 3)
+    end_date = date(2018, 7, 4)
     for single_date in daterange(start_date, end_date):
         DATE = single_date.strftime("%Y-%m-%d")
         print(DATE)

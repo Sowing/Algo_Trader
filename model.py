@@ -120,7 +120,7 @@ def check_balance(user, date):
     starting_balance = cursor.execute('''SELECT balance FROM users WHERE username = ? ''', [user]).fetchone()[0]
     return currency_holdings['USD'] + starting_balance
 
-def check_portfolio(user, date):
+def check_portfolio(user, date, *args):
     #aggregate all b/s information and give balance on given date
     connection = sqlite3.connect('algoforexdb.db')
     cursor = connection.cursor()
@@ -143,7 +143,8 @@ def check_portfolio(user, date):
         elif row['b/s'] == 's':
             currency_holdings[currency] = currency_holdings[currency] - row['amount'] 
             currency_holdings['USD'] =  currency_holdings['USD'] + row['amount']/row['price']
-    print(currency_holdings)       
+    if not args:
+        print(currency_holdings)       
     #Calculate usd
     starting_balance = cursor.execute('''SELECT balance FROM users WHERE username = ? ''', [user]).fetchone()[0]
     Total_USD_worth = 0
@@ -151,9 +152,10 @@ def check_portfolio(user, date):
         CURRENCY = [key]
         current_price = cursor.execute('''SELECT price from price_table join source_target_table on price_table.st_id = source_target_table.st_id where source_target_table.target = ? and price_table.timestamp = ?''', (key, date)).fetchone()[0]
         Total_USD_worth = Total_USD_worth + currency_holdings[key]/current_price
-    print('Worth total of %s USD' % (Total_USD_worth + starting_balance))
+    if not args:
+        print('Worth total of %s USD' % (Total_USD_worth + starting_balance))  
     #Calculate current worth
-    return
+    return Total_USD_worth + starting_balance
 
 def buy(user, currency, amount, date):
 
@@ -235,3 +237,14 @@ def get_all_currency_information(date):
         print('1 %s equals %s %s\n\r' % (price[0], price[2], price[1]))
     connection.commit()
 
+def get_real_time_currency_information(currency):
+    USER_ID = 1
+    URL = 'http://apilayer.net/api/'
+    SOURCE = 'USD'
+    API_KEY = '45d4584351c4a10188d67c228f22b2a9'
+    TYPE = 'live'
+    CURRENCY = [currency]
+    current_price = json.loads(API.get_currency_data(URL, SOURCE, API_KEY, TYPE, CURRENCY))['quotes']
+    for currency in current_price:
+        print('1 %s equals %s %s\n\r' % ('USD', current_price[currency], currency[2:]))
+    return
