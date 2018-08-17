@@ -246,5 +246,5 @@ def get_real_time_currency_information(currency):
     CURRENCY = [currency]
     current_price = json.loads(API.get_currency_data(URL, SOURCE, API_KEY, TYPE, CURRENCY))['quotes']
     for currency in current_price:
-        print('1 %s equals %s %s\n\r' % ('USD', current_price[currency], currency[2:]))
+        print('1 %s equals %s %s\n\r' % ('USD', current_price[currency], currency[3:]))
     return
