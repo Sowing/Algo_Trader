@@ -5,6 +5,9 @@ import sys
 from datetime import date as date_module
 import API
 
+
+leverage = 25
+
 def welcome():
     choice = view.welcome()
     if choice == '1':
@@ -36,17 +39,25 @@ def register():
     
 def select_page(current_user):
     choice = view.select()
-    if choice == 'B':
+    if choice == 'SL':
+        #lookup currency real-time price
+        global leverage
+        leverage = int(input('Please set leverage: '))
+        print('Leverage is now %s' % leverage)
+        _ = input("\n\nHit any key to return")
+        return
+
+    elif choice == 'B':
         #Buy
         currency = view.get_currency()
         if not model.check_currency(currency):
             _ = input('\n\nHit any key to return')
             print("Going to selection page")
             return      
-        amount = view.get_amount('Buy')
+        amount = view.get_amount('Buy',leverage)
         #print(amount)
         date = view.enter_date()
-        model.buy(current_user, currency, amount, date)
+        model.buy(current_user, currency, amount, date, leverage)
         return
 
     elif choice == 'S':
@@ -56,9 +67,9 @@ def select_page(current_user):
             _ = input('\n\nHit any key to return')
             print("Going to selection page")
             return    
-        amount = view.get_amount('Sell')
+        amount = view.get_amount('Sell',leverage)
         date = view.enter_date()
-        model.sell(current_user, currency, amount, date)
+        model.sell(current_user, currency, amount, date, leverage)
         return
     elif choice == 'D':
         #Delete all transactions
@@ -83,16 +94,16 @@ def select_page(current_user):
         #View balance
         #print("You currently have %s in your balance" % model.get_balance(current_user))
         date = view.enter_date()
-        try:
-            model.check_portfolio(current_user, date)
-        except:
-            print('No price found')
+       # try:
+        model.check_portfolio(current_user, date)
+    #    except:
+     #       print('No price found')
         _ = input('\n\nHit any key to return')
         return 
 
     elif choice == 'P':
         #See P/L
-        print('Input date range to see perforance in these range')
+        print('Input date range to see performance in these range')
         start_date = view.enter_date()
         end_date = view.enter_date()
         start_date = list(map(int,start_date.split('-')))

@@ -31,6 +31,7 @@ def select():
     os.system('clear')
     print('''******************************************\n''')
     print('''Terminal Trader\n''')
+    print('''[SL] Set leverage\n''')
     print('''[B] Buy\n''')
     print('''[S] Sell\n''')
     print('''[D] Delete All transactions\n''')
@@ -47,12 +48,12 @@ def get_currency():
     print("You would like to trade currency %s" % currency)
     return currency
 
-def get_amount(type):
+def get_amount(type, leverage=25):
 
     amount = input('How much money you want to %s (In USD)?' % type)
-    print("You would like to %s %s USD" % (type,amount))
+    print("You would like to %s %s USD. \nWarning:current leverage is %d." % (type,amount,leverage))
     return amount
 
 def enter_date():
-    amount = input('Please enter date (From 2017-07-04 to 2018-08-02): ')
+    amount = input('Please enter date (From 2015-07-04 to 2018-08-02): ')
     return amount

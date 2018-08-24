@@ -80,7 +80,7 @@ def send_to_database(registration):
         _ = input("Press anykey to continue")
         return False
 
-def check_balance(user, date):
+def check_balancey_(user, date):
     #calculate g/l in usd, and return balance
     '''
     USER_ID = 1
@@ -112,22 +112,37 @@ def check_balance(user, date):
             currency_holdings[currency] = 0
         if row['b/s'] == 'b':
             currency_holdings[currency] = currency_holdings[currency] + row['amount']
-            currency_holdings['USD'] =  currency_holdings['USD'] - row['amount']/row['price']
+            #currency_holdings['USD'] =  currency_holdings['USD'] - row['amount']/row['price']
         elif row['b/s'] == 's':
             currency_holdings[currency] = currency_holdings[currency] - row['amount'] 
-            currency_holdings['USD'] =  currency_holdings['USD'] + row['amount']/row['price']
-    #Calculate usd
+            #currency_holdings['USD'] =  currency_holdings['USD'] + row['amount']/row['price']
+    currency_holdings['USD+'] = 0
+    currency_holdings['USD-'] = 0
+    for currency in currency_holdings:
+        if currency_holdings[currency] > 0 and 'USD' not in currency:
+            print(currency)
+            currency_price = cursor.execute('''SELECT price 
+                                                from price_table join source_target_table 
+                                                    on price_table.st_id = source_target_table.st_id
+                                                where source_target_table.target = ? and price_table.timestamp = ?''', [currency, date]).fetchone()[0]
+            currency_holdings['USD+'] = currency_holdings['USD+'] + float(currency_holdings[currency]) / float(currency_price)
+        elif currency_holdings[currency] < 0 and 'USD' not in currency:
+            print(currency)
+            currency_price = cursor.execute('''SELECT price 
+                                                from price_table join source_target_table 
+                                                    on price_table.st_id = source_target_table.st_id
+                                                where source_target_table.target = ? and price_table.timestamp = ?''', [currency, date]).fetchone()[0]
+            currency_holdings['USD-'] = currency_holdings['USD-'] - float(currency_holdings[currency]) / float(currency_price)   
     starting_balance = cursor.execute('''SELECT balance FROM users WHERE username = ? ''', [user]).fetchone()[0]
-    return currency_holdings['USD'] + starting_balance
+    return starting_balance - currency_holdings['USD-'] - currency_holdings['USD+']
 
-def check_portfolio(user, date, *args):
-    #aggregate all b/s information and give balance on given date
+def check_balance(user, date, selected_currency,buy_sell='None', **kwargs):
     connection = sqlite3.connect('algoforexdb.db')
     cursor = connection.cursor()
     u_id = cursor.execute('''SELECT u_id FROM users WHERE username = ? ''', [user]).fetchone()[0]
     all_transactions = cursor.execute('''SELECT * FROM transactions join price_table on transactions.p_id = price_table.p_id WHERE transactions.u_id = ? ''', [u_id]).fetchall()
     df = pd.DataFrame(all_transactions, columns=['t_id', 'u_id', 'b/s', 'amount', 'p_id', 'timestamp_', 'p_id_r', 'st_id', 'price', 'date'])
-    currency_holdings = {'USD':0}
+    currency_holdings = {}
     for index, row in df.iterrows():
         transaction_time = time.strptime(row['date'], "%Y-%m-%d")
         current_time = time.strptime(date, "%Y-%m-%d")
@@ -136,33 +151,93 @@ def check_portfolio(user, date, *args):
             continue
         currency = cursor.execute('''SELECT target FROM source_target_table WHERE st_id = ? ''', [row['st_id']]).fetchone()[0]
         if currency not in currency_holdings:
-            currency_holdings[currency] = 0
+            currency_holdings[currency] = [0,0]
         if row['b/s'] == 'b':
-            currency_holdings[currency] = currency_holdings[currency] + row['amount']
-            currency_holdings['USD'] =  currency_holdings['USD'] - row['amount']/row['price']
+            currency_holdings[currency] = [currency_holdings[currency][0] - row['amount']/row['price'] , currency_holdings[currency][1] + row['amount']]
+            #currency_holdings['USD'] =  currency_holdings['USD'] - row['amount']/row['price']
         elif row['b/s'] == 's':
-            currency_holdings[currency] = currency_holdings[currency] - row['amount'] 
-            currency_holdings['USD'] =  currency_holdings['USD'] + row['amount']/row['price']
+            currency_holdings[currency] = [currency_holdings[currency][0] + row['amount']/row['price'] , currency_holdings[currency][1] - row['amount']]
+            #currency_holdings['USD'] =  currency_holdings['USD'] + row['amount']/row['price']    
+    starting_balance = cursor.execute('SELECT balance FROM users WHERE username = ? ', [user]).fetchone()[0]
+
+    buying_power = starting_balance
+    for key in currency_holdings:
+        if key != selected_currency:
+            if currency_holdings[key][0] > 0:
+                buying_power = buying_power - currency_holdings[key][0]
+            else:
+                buying_power = buying_power + currency_holdings[key][0]
+        elif buy_sell == 'buy': #if we can buy 4500 JPY , change the minus, buying power = currency short amount + balance
+            current_price = cursor.execute('''SELECT price 
+                                    from price_table join source_target_table 
+                                        on price_table.st_id = source_target_table.st_id
+                                    where source_target_table.target = ? and price_table.timestamp = ?''', [selected_currency, date]).fetchone()[0]
+            if currency_holdings[key][0] > 0: #short case
+                buying_power = buying_power - currency_holdings[key][0] + -1*(currency_holdings[key][1]/current_price)#net debt convert to current date usd
+            else: #long case
+                buying_power = buying_power + currency_holdings[key][0]  
+        elif buy_sell == 'sell': #selling power = currency worth + buying power
+            current_price = cursor.execute('''SELECT price 
+                                    from price_table join source_target_table 
+                                        on price_table.st_id = source_target_table.st_id
+                                    where source_target_table.target = ? and price_table.timestamp = ?''', [selected_currency, date]).fetchone()[0]
+            if currency_holdings[key][0] > 0: #short case
+                buying_power = buying_power - currency_holdings[key][0] 
+            else: #long case
+                buying_power = buying_power + currency_holdings[key][0] + (currency_holdings[key][1]/current_price)#newtworth of currency to current date usd
+
+    if selected_currency == 'all':
+        return currency_holdings, starting_balance, buying_power
+    else:             
+        return buying_power
+
+def check_portfolio(user, date, *args):
+    #aggregate all b/s information and give balance on given date
+    connection = sqlite3.connect('algoforexdb.db')
+    cursor = connection.cursor()
+    currency_holdings, starting_balance, buying_power = check_balance(user,date,'all')
     if not args:
-        print(currency_holdings)       
+        print('Current holdings:')
+        print(currency_holdings)   
+    ''' 
+    for currency in currency_holdings:
+        if currency_holdings[currency] > 0 and 'USD' not in currency:
+            print(currency)
+            currency_price = cursor.execute('SELECT price 
+                                                from price_table join source_target_table 
+                                                    on price_table.st_id = source_target_table.st_id
+                                                where source_target_table.target = ? and price_table.timestamp = ?', [currency, date]).fetchone()[0]
+            currency_holdings['USD+'] = currency_holdings['USD+'] + float(currency_holdings[currency]) / float(currency_price)
+        elif currency_holdings[currency] < 0 and 'USD' not in currency:
+            print(currency)
+            currency_price = cursor.execute('SELECT price 
+                                                from price_table join source_target_table 
+                                                    on price_table.st_id = source_target_table.st_id
+                                                where source_target_table.target = ? and price_table.timestamp = ?', [currency, date]).fetchone()[0]
+            currency_holdings['USD-'] = currency_holdings['USD-'] - float(currency_holdings[currency]) / float(currency_price)    
+    '''
     #Calculate usd
-    starting_balance = cursor.execute('''SELECT balance FROM users WHERE username = ? ''', [user]).fetchone()[0]
+    
     Total_USD_worth = 0
     for key in currency_holdings:
-        CURRENCY = [key]
-        current_price = cursor.execute('''SELECT price from price_table join source_target_table on price_table.st_id = source_target_table.st_id where source_target_table.target = ? and price_table.timestamp = ?''', (key, date)).fetchone()[0]
-        Total_USD_worth = Total_USD_worth + currency_holdings[key]/current_price
+        if 'USD' not in key:
+        #continue
+            current_price = cursor.execute('SELECT price from price_table join source_target_table on price_table.st_id = source_target_table.st_id where source_target_table.target = ? and price_table.timestamp = ?', (key, date)).fetchone()[0]
+            Total_USD_worth = Total_USD_worth + currency_holdings[key][1]/current_price + currency_holdings[key][0]
+            print('You have %s USD of buying power left on %s currency.' % (check_balance(user, date, key, buy_sell='buy'),key))
+            print('You have %s USD of selling power left on %s currency.\n' % (check_balance(user, date, key, buy_sell='sell'), key))
+
     if not args:
-        print('Worth total of %s USD' % (Total_USD_worth + starting_balance))  
+        print('Worth total of %s USD.' % (Total_USD_worth + starting_balance)) 
     #Calculate current worth
+    
     return Total_USD_worth + starting_balance
-
-def buy(user, currency, amount, date):
-
+def buy(user, currency, amount, date, leverage = 25):
+    amount = int(amount) * int(leverage)
     connection = sqlite3.connect('algoforexdb.db')
     cursor = connection.cursor()
     starting_balance = cursor.execute('''SELECT balance FROM users WHERE username = ? ''', [user]).fetchone()[0]
-    if check_balance(user, date)<= 0:
+    if check_balance(user, date, currency, buy_sell='buy')<= 0:
         print("You do not have enough balance")
         _ = input("Press anykey to continue")
         return
@@ -171,6 +246,11 @@ def buy(user, currency, amount, date):
     p_id = cursor.execute('''SELECT p_id FROM price_table WHERE st_id = ? and timestamp = ? ''', [st_id, date]).fetchone()[0]
     price = cursor.execute('''SELECT price FROM price_table WHERE st_id = ? and timestamp = ? ''', [st_id, date]).fetchone()[0]
     trading_amount = float(amount)*float(price)  #amount passed in parameter is in USD
+    if amount > check_balance(user, date, currency, buy_sell='buy'):
+        print("You do not enough money to perform this transaction.\nTransaction failed.")
+        print("You can only buy %s of USD now" % check_balance(user, date, currency))
+        _ = input("Press anykey to continue")
+        return        
     cursor.execute('''INSERT INTO transactions (u_id, buy_sell, amount, p_id) values (?, ?, ?, ?) ''', (u_id, 'b', trading_amount, p_id))
     connection.commit()
     print('You successfully bought %s USD worth of %s which is %s %s' % (amount, currency, trading_amount, currency))
@@ -180,10 +260,16 @@ def buy(user, currency, amount, date):
     #insert a buy record
 
 
-def sell(user, currency, amount, date):
+def sell(user, currency, amount, date, leverage = 25):
     #check_portfolio to see if user holds enough share
+    amount = int(amount) * int(leverage)
     connection = sqlite3.connect('algoforexdb.db')
     cursor = connection.cursor()
+    starting_balance = cursor.execute('''SELECT balance FROM users WHERE username = ? ''', [user]).fetchone()[0]
+    if check_balance(user,date,currency, buy_sell='sell') < 0:
+        print("You cannot short anymore")
+        print("You can only short %s of USD now" % check_balance(user, date, currency))
+        _ = input("Press anykey to continue")
     u_id = cursor.execute('''SELECT u_id FROM users WHERE username = ? ''', [user]).fetchone()[0]
     st_id = cursor.execute('''SELECT st_id FROM source_target_table WHERE target = ? ''', [currency]).fetchone()[0]
     p_id = cursor.execute('''SELECT p_id FROM price_table WHERE st_id = ? and timestamp = ? ''', [st_id, date]).fetchone()[0]
@@ -192,6 +278,7 @@ def sell(user, currency, amount, date):
          WHERE transactions.u_id = ? and price_table.st_id = ? ''', (u_id, st_id)).fetchall()
     df = pd.DataFrame(all_transactions, columns=['t_id', 'u_id', 'b/s', 'amount', 'p_id', 'timestamp_', 'p_id_r', 'st_id', 'price', 'date'])
     total_current_holdings = 0.0
+
     for index, row in df.iterrows():
         transaction_time = time.strptime(row['date'], "%Y-%m-%d")
         current_time = time.strptime(date, "%Y-%m-%d")
@@ -202,8 +289,8 @@ def sell(user, currency, amount, date):
             total_current_holdings = total_current_holdings + row['amount']
         elif row['b/s'] == 's':
             total_current_holdings = total_current_holdings - row['amount']
-
-    if total_current_holdings <= 0:
+    '''
+    if total_current_holdings < 0:        
         print("You don't have this currency")
         _ = input("Press anykey to continue")
         return
@@ -212,13 +299,20 @@ def sell(user, currency, amount, date):
         print("Currently you only have %s in USD of %s " % (total_current_holdings/price, currency))
         _ = input("Press anykey to continue")
         return
-    else:
+    '''    
+        
+    #else:
+    if amount < check_balance(user,date, currency, buy_sell='sell'):
         trading_amount = float(amount)*float(price)  #amount passed in parameter is in USD
         cursor.execute('''INSERT INTO transactions (u_id, buy_sell, amount, p_id) values (?, ?, ?, ?) ''', (u_id, 's', trading_amount, p_id))
         connection.commit()            
         print('You successfully sold %s USD worth of %s which is %s %s' % (amount, currency, trading_amount, currency))
         _ = input("Press anykey to continue")
         return
+    else:
+        print("You don't have enough money to short.\nTransaction failed.")
+        print("You can only short %s of USD now" % check_balance(user, date, currency))
+        _ = input("Press anykey to continue")        
     return
 
 def delete_all_transactions():
@@ -248,3 +342,6 @@ def get_real_time_currency_information(currency):
     for currency in current_price:
         print('1 %s equals %s %s\n\r' % ('USD', current_price[currency], currency[3:]))
     return
+
+def strategy_1():
+    pass

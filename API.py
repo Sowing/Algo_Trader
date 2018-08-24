@@ -48,12 +48,12 @@ if __name__ == '__main__':
     URL = 'http://apilayer.net/api/'
     SOURCE = 'USD'
     CURRENCY = []
-    API_KEY = '45d4584351c4a10188d67c228f22b2a9'
+    API_KEY = '94edd2a08332c5180f5271466a60d760' #'45d4584351c4a10188d67c228f22b2a9'
     TYPE = 'historical'
     
 
-    start_date = date(2018, 7, 3)
-    end_date = date(2018, 7, 4)
+    start_date = date(2015, 7, 3)
+    end_date = date(2017, 7, 4)
     for single_date in daterange(start_date, end_date):
         DATE = single_date.strftime("%Y-%m-%d")
         print(DATE)
