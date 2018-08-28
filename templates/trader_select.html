@@ -1,0 +1,123 @@
+
+{% extends "bootstrap/base.html" %}
+{% block header %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <h1>{% block title %}Welcome to forextrader!{% endblock %}</h1>
+{% endblock %}
+{% block error %}
+  {% if (error) %}
+     <p> {{error}} <p>
+  {% endif %}
+{% endblock %}
+
+
+{% block content %}
+  <h2>Please select what you want to do<h2>
+  <form name='choice' method="post">
+    <label for="choice">Select Choice</label>  
+    <select name=choice>
+    <option value='SL'>1.Set leverage</option>
+    <option value='B'>2.Buy</option>
+    <option value='S'>3.Sell</option>
+    <option value='D'>4.Delete All transactions</option>
+    <option value='L'>5.Look-up currency price on a date</option>
+    <option value='LR'>6.Look-up real-time currency price</option>
+    <option value='V'>7.View Balance on a date</option>
+    <option value='P'>8.See P/L</option>
+    <option value='E'>9.Logout</option>
+    <input type="submit" value="Submit">
+    </select>
+    {% if (choice == 'SL') %}
+    <h2>Current leverage is {{leverage}}<h2>
+    <form name="leverage" method="post">
+      <label for="leverage">Set Leverage: </label>
+      <input name="leverage" id="leverage" >
+    </form>
+    {% elif (choice == 'B') %}
+        {% if (msg) %}
+        <h2> {{msg}} <h2>
+        {% else %}
+        <h2>Current leverage is {{leverage}}<h2>
+        <form method="post">
+          <label for="currency">Choose currency(JPY, EUR, etc.):  </label>
+          <input name="currency" id="currency">
+          <label for="amount"><br />Enter amount (in USD):  </label>
+          <input name="amount" id="amount">
+          <label for="date"><br />Enter date (YYYY-MM-DD):  </label>
+          <input name="date" id="date">
+        </form>
+        {% endif %}
+    {% elif (choice == 'S') %}
+        {% if (msg) %}
+        <h2> {{msg}} <h2>
+        {% else %}
+        <h2>Current leverage is {{leverage}}<h2>
+        <h2>Enter how much you would like to sell.<h2>
+        <form method="post">
+          <label for="currency">Choose currency(JPY, EUR, etc.):  </label>
+          <input name="currency" id="currency">
+          <label for="amount"><br />Enter amount (in USD):  </label>
+          <input name="amount" id="amount">
+          <label for="date"><br />Enter date (YYYY-MM-DD):  </label>
+          <input name="date" id="date">
+        </form>
+        {% endif %}
+    {% elif (choice == 'D') %}
+      {% if (msg) %}
+        <h2> {{msg}} <h2>
+      {% else %}
+      <form name="delete" method="post">
+        <select name=delete>
+        <option value='1'>1.Delete</option>
+        <option value='2'>2.Do not Delete</option>
+        </select>
+      </form>
+      {% endif %}
+    {% elif (choice == 'L') %}
+      {% if (msg) %}
+        {% for ms in msg%}
+        <h2> {{ms}} <h2>
+        {% endfor %}}
+      {% else %}
+        <label for="date"><br />Enter date (YYYY-MM-DD):  </label>
+        <input name="date" id="date">
+      {% endif %}
+    {% elif (choice == 'LR') %}
+      {% if (msg) %}
+        {% for ms in msg%}
+        <h2> {{ms}} <h2>
+        {% endfor %}}
+      {% else %}
+          <label for="currency">Choose currency(JPY, EUR, etc.):  </label>
+          <input name="currency" id="currency">
+      {% endif %}
+    {% elif (choice == 'V') %}
+      {% if (msg) %}
+        {% for ms in msg%}
+        <h2> {{ms}} <h2>
+        {% endfor %}}
+      {% else %}
+        <label for="date"><br />Enter date (YYYY-MM-DD):  </label>
+        <input name="date" id="date">
+      {% endif %}
+    {% elif (choice == 'P') %}
+    <h2>Current leverage is {{leverage}}<h2>
+    <form name="leverage" method="post">
+      <label for="leverage">Set Leverage: </label>
+      <input name="leverage" id="leverage" >
+    </form>
+    {% endif %}
+    
+  </form>
+<br />
+<br />
+<br />
+<br />
+Click <a href="http://206.81.10.243:5000/trader_welcome/select_page">here</a> to return
+{% endblock %}
+
+{% block subcontent1 %}
+
+{% endblock %}
+
+<p><p>

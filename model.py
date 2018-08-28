@@ -71,14 +71,14 @@ def send_to_database(registration):
         username,password,balance)
         VALUES(?,?,?)''',
         (name,password,100000.00))
-        print("User %s Successfully created" % name)
-        _ = input("Press anykey to continue")
+        #print()
+        #_ = input("Press anykey to continue")
         connection.commit()
         return True
     else:
-        print("User %s already exits, try another name" % name)
-        _ = input("Press anykey to continue")
-        return False
+        #print()
+        #_ = input("Press anykey to continue")
+        return False 
 
 def check_balancey_(user, date):
     #calculate g/l in usd, and return balance
@@ -219,43 +219,40 @@ def check_portfolio(user, date, *args):
     #Calculate usd
     
     Total_USD_worth = 0
+    msg = []
     for key in currency_holdings:
         if 'USD' not in key:
         #continue
             current_price = cursor.execute('SELECT price from price_table join source_target_table on price_table.st_id = source_target_table.st_id where source_target_table.target = ? and price_table.timestamp = ?', (key, date)).fetchone()[0]
             Total_USD_worth = Total_USD_worth + currency_holdings[key][1]/current_price + currency_holdings[key][0]
-            print('You have %s USD of buying power left on %s currency.' % (check_balance(user, date, key, buy_sell='buy'),key))
-            print('You have %s USD of selling power left on %s currency.\n' % (check_balance(user, date, key, buy_sell='sell'), key))
+            msg.append('You have %s USD of buying power left on %s currency.' % (check_balance(user, date, key, buy_sell='buy'),key))
+            msg.append('You have %s USD of selling power left on %s currency.\n' % (check_balance(user, date, key, buy_sell='sell'), key))
 
     if not args:
-        print('Worth total of %s USD.' % (Total_USD_worth + starting_balance)) 
+        msg.append('Worth total of %s USD.' % (Total_USD_worth + starting_balance)) 
     #Calculate current worth
     
-    return Total_USD_worth + starting_balance
+    return msg
 def buy(user, currency, amount, date, leverage = 25):
     amount = int(amount) * int(leverage)
     connection = sqlite3.connect('algoforexdb.db')
     cursor = connection.cursor()
     starting_balance = cursor.execute('''SELECT balance FROM users WHERE username = ? ''', [user]).fetchone()[0]
     if check_balance(user, date, currency, buy_sell='buy')<= 0:
-        print("You do not have enough balance")
-        _ = input("Press anykey to continue")
-        return
+        return "You do not have enough balance"
     u_id = cursor.execute('''SELECT u_id FROM users WHERE username = ? ''', [user]).fetchone()[0]
     st_id = cursor.execute('''SELECT st_id FROM source_target_table WHERE target = ? ''', [currency]).fetchone()[0]
     p_id = cursor.execute('''SELECT p_id FROM price_table WHERE st_id = ? and timestamp = ? ''', [st_id, date]).fetchone()[0]
     price = cursor.execute('''SELECT price FROM price_table WHERE st_id = ? and timestamp = ? ''', [st_id, date]).fetchone()[0]
     trading_amount = float(amount)*float(price)  #amount passed in parameter is in USD
     if amount > check_balance(user, date, currency, buy_sell='buy'):
-        print("You do not enough money to perform this transaction.\nTransaction failed.")
-        print("You can only buy %s of USD now" % check_balance(user, date, currency))
-        _ = input("Press anykey to continue")
-        return        
+        msg = "You do not enough money to perform this transaction.\nTransaction failed."
+        msg = msg + "\nYou can only buy %s of USD now" % check_balance(user, date, currency)
+        return msg       
     cursor.execute('''INSERT INTO transactions (u_id, buy_sell, amount, p_id) values (?, ?, ?, ?) ''', (u_id, 'b', trading_amount, p_id))
     connection.commit()
-    print('You successfully bought %s USD worth of %s which is %s %s' % (amount, currency, trading_amount, currency))
-    _ = input("Press anykey to continue")
-    return
+    msg = 'You successfully bought %s USD worth of %s which is %s %s' % (amount, currency, trading_amount, currency)
+    return msg
     #check_balance
     #insert a buy record
 
@@ -267,9 +264,9 @@ def sell(user, currency, amount, date, leverage = 25):
     cursor = connection.cursor()
     starting_balance = cursor.execute('''SELECT balance FROM users WHERE username = ? ''', [user]).fetchone()[0]
     if check_balance(user,date,currency, buy_sell='sell') < 0:
-        print("You cannot short anymore")
-        print("You can only short %s of USD now" % check_balance(user, date, currency))
-        _ = input("Press anykey to continue")
+        msg = "You cannot short anymore"
+        msg = msg + "\nYou can only short %s of USD now" % check_balance(user, date, currency)
+        return msg
     u_id = cursor.execute('''SELECT u_id FROM users WHERE username = ? ''', [user]).fetchone()[0]
     st_id = cursor.execute('''SELECT st_id FROM source_target_table WHERE target = ? ''', [currency]).fetchone()[0]
     p_id = cursor.execute('''SELECT p_id FROM price_table WHERE st_id = ? and timestamp = ? ''', [st_id, date]).fetchone()[0]
@@ -306,14 +303,12 @@ def sell(user, currency, amount, date, leverage = 25):
         trading_amount = float(amount)*float(price)  #amount passed in parameter is in USD
         cursor.execute('''INSERT INTO transactions (u_id, buy_sell, amount, p_id) values (?, ?, ?, ?) ''', (u_id, 's', trading_amount, p_id))
         connection.commit()            
-        print('You successfully sold %s USD worth of %s which is %s %s' % (amount, currency, trading_amount, currency))
-        _ = input("Press anykey to continue")
-        return
+        msg = 'You successfully sold %s USD worth of %s which is %s %s' % (amount, currency, trading_amount, currency)
+        return msg
     else:
-        print("You don't have enough money to short.\nTransaction failed.")
-        print("You can only short %s of USD now" % check_balance(user, date, currency))
-        _ = input("Press anykey to continue")        
-    return
+        msg = "You don't have enough money to short.\nTransaction failed."
+        msg = "\nYou can only short %s of USD now" % check_balance(user, date, currency)
+    return msg
 
 def delete_all_transactions():
     connection = sqlite3.connect('algoforexdb.db')
@@ -321,15 +316,17 @@ def delete_all_transactions():
     cursor.execute('''DELETE FROM transactions;''')
     cursor.execute('''VACUUM;''')
     connection.commit()
-    print('Successfully deleted all transactions')
+    return 'Successfully deleted all transactions'
 
 def get_all_currency_information(date):
     connection = sqlite3.connect('algoforexdb.db')
     cursor = connection.cursor()
     current_price = cursor.execute('''SELECT source, target, price from price_table join source_target_table on price_table.st_id = source_target_table.st_id where price_table.timestamp = ?''', (date, )).fetchall()
+    msg = []   
     for price in current_price:
-        print('1 %s equals %s %s\n\r' % (price[0], price[2], price[1]))
+        msg.append("1 %s equals %s %s " % (price[0], price[2], price[1]))
     connection.commit()
+    return msg
 
 def get_real_time_currency_information(currency):
     USER_ID = 1
@@ -339,9 +336,10 @@ def get_real_time_currency_information(currency):
     TYPE = 'live'
     CURRENCY = [currency]
     current_price = json.loads(API.get_currency_data(URL, SOURCE, API_KEY, TYPE, CURRENCY))['quotes']
+    msg = []
     for currency in current_price:
-        print('1 %s equals %s %s\n\r' % ('USD', current_price[currency], currency[3:]))
-    return
+        msg.append('1 %s equals %s %s' % ('USD', current_price[currency], currency[3:]))
+    return msg
 
 def strategy_1():
     pass

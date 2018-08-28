@@ -1,0 +1,23 @@
+{% extends "bootstrap/base.html" %}
+
+{% block header %}
+  <h1>{% block title %}Welcome to forextrader!{% endblock %}</h1>
+{% endblock %}
+{% block conetent %}
+  {% if (error) %}
+     <p> {{error}} <p>
+  {% endif %}
+{% endblock %}
+
+
+{% block content %}
+  <h2>Select 1 for login and 2 for register<h2>
+  <form name='choice' method="post">
+    <label for="choice">Enter Choice</label>  
+    <select name=choice>
+    <option value='1'>1.Login</option>
+    <option value='2'>2.Register</option>
+    </select>
+    <input type="submit" value="Submit">
+  </form>
+{% endblock %}
