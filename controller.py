@@ -4,10 +4,20 @@ import view
 import sys
 from datetime import date as date_module
 import API
+import datetime
 from flask import Flask
 from flask import request
 from flask import render_template, abort, url_for, redirect,session
 from flask_bootstrap import Bootstrap
+from bokeh.plotting import figure, output_file, show
+from bokeh.models import DatetimeTickFormatter
+from bokeh.models import (HoverTool, FactorRange, Plot, LinearAxis, Grid,
+                          Range1d)
+from bokeh.models.glyphs import VBar
+from bokeh.plotting import figure
+from bokeh.embed import components
+from bokeh.models.sources import ColumnDataSource
+
 app = Flask(__name__)
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
 Bootstrap(app)
@@ -16,7 +26,40 @@ leverage = 25
 
 @app.route('/')
 def hello_world():
-    return 'Hello, World!'
+    def build_index(date):
+        indexes = {}
+        for row in model.get_all_currency_information(date)[1]:
+            if row[1] == 'JPY' or row[1] == 'CNY' or row[1] == 'GBP' or row[1] == 'CAD' or row[1] == 'EUR':
+                indexes[row[1]] = row[2]
+        return indexes
+
+    start_date = '2018-01-01'
+    end_date = '2018-05-03'
+    start_date = list(map(int,start_date.split('-')))
+    end_date = list(map(int,end_date.split('-')))
+    start_date = date_module(start_date[0], start_date[1], start_date[2])
+    end_date = date_module(end_date[0], end_date[1], end_date[2])
+    date = []
+    balance = []
+    market = []
+    base_index = build_index(start_date)
+
+    for single_date in API.daterange(start_date, end_date):
+        DATE = single_date.strftime("%Y-%m-%d")
+        balance.append(model.check_portfolio('nan', DATE)[1])
+        date.append(single_date)
+        performance = 0
+        for key, value in build_index(DATE).iteritems():
+            performance = base_index[key]*1.0/value + performance
+        market.append(performance*20000)
+        
+    p = figure(plot_width=800, plot_height=250)   
+    p.xaxis[0].formatter = DatetimeTickFormatter()
+    p.line(date, balance, color='navy', alpha=0.5)
+    p.line(date, market, color='red', alpha=0.5)
+    script, div = components(p)
+
+    return render_template("plot.html", the_div=div, the_script=script)
 
 
 @app.route('/trader_welcome', methods=['POST', 'GET'] )
@@ -144,7 +187,7 @@ def select_page():
                 return render_template('trader_select.html', choice=choice,leverage=session['leverage'],level=session['level'])      
             elif session['level'] == 1:
                 date = request.form['date']
-                msg = model.get_all_currency_information(date)
+                msg, _ = model.get_all_currency_information(date)
                 session['level'] = 0
                 return render_template('trader_select.html', choice=choice,leverage=session['leverage'],level=session['level'], msg=msg) 
              
@@ -168,25 +211,56 @@ def select_page():
             elif session['level'] == 1:
                 date = request.form['date']
            # try:
-                msg = model.check_portfolio(session['username'], date)
+                msg, _ = model.check_portfolio(session['username'], date)
         #    except:
          #       print('No price found')
                 return render_template('trader_select.html', choice=choice,leverage=session['leverage'],level=session['level'], msg=msg) 
 
         elif choice == 'P':
             #See P/L
-            print('Input date range to see performance in these range')
-            start_date = view.enter_date()
-            end_date = view.enter_date()
-            start_date = list(map(int,start_date.split('-')))
-            end_date = list(map(int,end_date.split('-')))
-            start_date = date_module(start_date[0], start_date[1], start_date[2])
-            end_date = date_module(end_date[0], end_date[1], end_date[2])
-            for single_date in API.daterange(start_date, end_date):
-                DATE = single_date.strftime("%Y-%m-%d")
-                print('On Date %s you have %s' % (DATE, model.check_portfolio(current_user,DATE,'calculation')))
-            _ = input('\n\nHit any key to return')
-            return
+            if session['level'] == 0:
+                session['level'] = 1
+                return render_template('trader_select.html', choice=choice,leverage=session['leverage'],level=session['level'])      
+            elif session['level'] == 1:
+                #date = request.form['date']
+                def build_index(date):
+                    indexes = {}
+                    for row in model.get_all_currency_information(date)[1]:
+                        if row[1] == 'JPY' or row[1] == 'CNY' or row[1] == 'GBP' or row[1] == 'CAD' or row[1] == 'EUR':
+                            indexes[row[1]] = row[2]
+                    return indexes
+
+                start_date = request.form['start_date']
+                end_date = request.form['end_date']
+                start_date = list(map(int,start_date.split('-')))
+                end_date = list(map(int,end_date.split('-')))
+                start_date = date_module(start_date[0], start_date[1], start_date[2])
+                end_date = date_module(end_date[0], end_date[1], end_date[2])
+                date = []
+                balance = []
+                market = []
+                base_index = build_index(start_date)
+
+                for single_date in API.daterange(start_date, end_date):
+                    DATE = single_date.strftime("%Y-%m-%d")
+                    balance.append(model.check_portfolio(session['username'], DATE)[1])
+                    date.append(single_date)
+                    performance = 0
+                    for key, value in build_index(DATE).iteritems():
+                        performance = base_index[key]*1.0/value + performance
+                    market.append(performance*20000)
+                    
+                p = figure(plot_width=800, plot_height=250)   
+                p.xaxis[0].formatter = DatetimeTickFormatter()
+                p.line(date, balance, color='navy', alpha=0.5,legend='Your Algorithm')
+                p.line(date, market, color='red', alpha=0.5, legend='Market Performance')
+
+                p.legend.location = "top_left"
+                p.legend.click_policy="hide"
+                script, div = components(p)
+
+                return render_template("plot.html", the_div=div, the_script=script)
+
         
         elif choice == 'E':
             # quit

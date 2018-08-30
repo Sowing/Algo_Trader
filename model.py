@@ -232,7 +232,7 @@ def check_portfolio(user, date, *args):
         msg.append('Worth total of %s USD.' % (Total_USD_worth + starting_balance)) 
     #Calculate current worth
     
-    return msg
+    return msg, Total_USD_worth + starting_balance
 def buy(user, currency, amount, date, leverage = 25):
     amount = int(amount) * int(leverage)
     connection = sqlite3.connect('algoforexdb.db')
@@ -326,7 +326,7 @@ def get_all_currency_information(date):
     for price in current_price:
         msg.append("1 %s equals %s %s " % (price[0], price[2], price[1]))
     connection.commit()
-    return msg
+    return msg,current_price
 
 def get_real_time_currency_information(currency):
     USER_ID = 1

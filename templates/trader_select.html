@@ -23,10 +23,12 @@
     <option value='L'>5.Look-up currency price on a date</option>
     <option value='LR'>6.Look-up real-time currency price</option>
     <option value='V'>7.View Balance on a date</option>
-    <option value='P'>8.See P/L</option>
+    <option value='P'>8.See P/L between 2 dates</option>
     <option value='E'>9.Logout</option>
     <input type="submit" value="Submit">
     </select>
+    <br />
+    <br />
     {% if (choice == 'SL') %}
     <h2>Current leverage is {{leverage}}<h2>
     <form name="leverage" method="post">
@@ -101,11 +103,12 @@
         <input name="date" id="date">
       {% endif %}
     {% elif (choice == 'P') %}
-    <h2>Current leverage is {{leverage}}<h2>
-    <form name="leverage" method="post">
-      <label for="leverage">Set Leverage: </label>
-      <input name="leverage" id="leverage" >
-    </form>
+        <form method="post">
+          <label for="start_date"><br />Enter start date (YYYY-MM-DD):  </label>
+          <input name="start_date" id="start_date">
+          <label for="end_date"><br />Enter end date (YYYY-MM-DD):  </label>
+          <input name="end_date" id="end_date">
+        </form>
     {% endif %}
     
   </form>
@@ -113,7 +116,7 @@
 <br />
 <br />
 <br />
-Click <a href="http://206.81.10.243:5000/trader_welcome/select_page">here</a> to return
+Click <a href="http://206.81.10.243:5000/trader_welcome/select_page">here</a> to return to menu page
 {% endblock %}
 
 {% block subcontent1 %}
