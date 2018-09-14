@@ -175,11 +175,12 @@ def select_page():
                 return render_template('trader_select.html', choice=choice,leverage=session['leverage'],level=session['level'])      
             elif session['level'] == 1:
                 if request.form['delete'] == '1':
-                    msg = model.delete_all_transactions()
+                    msg = model.delete_all_transactions(session['username'])
                     session['level'] = 0
                     return render_template('trader_select.html', choice=choice,leverage=session['leverage'],level=session['level'], msg=msg) 
                 else:
                     return render_template('trader_select.html', choice=choice,leverage=session['leverage'],level=session['level'])
+        
         elif choice == 'L':
             #lookup currency price
             if session['level'] == 0:
@@ -246,7 +247,7 @@ def select_page():
                     balance.append(model.check_portfolio(session['username'], DATE)[1])
                     date.append(single_date)
                     performance = 0
-                    for key, value in build_index(DATE).iteritems():
+                    for key, value in build_index(DATE).items():
                         performance = base_index[key]*1.0/value + performance
                     market.append(performance*20000)
                     
@@ -261,7 +262,60 @@ def select_page():
 
                 return render_template("plot.html", the_div=div, the_script=script)
 
-        
+        elif choice == 'A1':
+            if session['level'] == 0:
+                session['level'] = 1
+                return render_template('trader_select.html', choice=choice,leverage=session['leverage'],level=session['level'])      
+            elif session['level'] == 1:
+                def build_index(date):
+                    indexes = {}
+                    for row in model.get_all_currency_information(date)[1]:
+                        if row[1] == 'JPY' or row[1] == 'CNY' or row[1] == 'GBP' or row[1] == 'CAD' or row[1] == 'EUR':
+                            indexes[row[1]] = row[2]
+                    return indexes
+
+                start_date = request.form['start_date']
+                end_date = request.form['end_date']
+                start_date = list(map(int,start_date.split('-')))
+                end_date = list(map(int,end_date.split('-')))
+                start_date = date_module(start_date[0], start_date[1], start_date[2])
+                end_date = date_module(end_date[0], end_date[1], end_date[2])
+                date = []
+                balance = []
+                market = []
+                base_index = build_index(start_date)
+                
+                model.algo_1(start_date, end_date, session['username'])
+               
+                for single_date in API.daterange(start_date, end_date):
+                    DATE = single_date.strftime("%Y-%m-%d")
+                    balance.append(model.check_portfolio(session['username'], DATE)[1])
+                    date.append(single_date)
+                    performance = 0
+                    for key, value in build_index(DATE).items():
+                        performance = base_index[key]*1.0/value + performance
+                    market.append(performance*20000)
+                    
+                p = figure(plot_width=800, plot_height=250)   
+                p.xaxis[0].formatter = DatetimeTickFormatter()
+                p.line(date, balance, color='navy', alpha=0.5,legend='Your Algorithm')
+                p.line(date, market, color='red', alpha=0.5, legend='Market Performance')
+
+                p.legend.location = "top_left"
+                p.legend.click_policy="hide"
+                script, div = components(p)
+
+                return render_template("plot.html", the_div=div, the_script=script)
+        elif choice == 'A2':
+            if session['level'] == 0:
+                session['level'] = 1
+                return render_template('trader_select.html', choice=choice,leverage=session['leverage'],level=session['level'])      
+ 
+        elif choice == 'A3':
+            if session['level'] == 0:
+                session['level'] = 1
+                return render_template('trader_select.html', choice=choice,leverage=session['leverage'],level=session['level'])      
+ 
         elif choice == 'E':
             # quit
             session.clear()
@@ -274,6 +328,7 @@ def select_page():
 
 if __name__ == "__main__":
         app.run()
+        #model.algo_1("2015-07-03", "2017-10-03", "nan")
 '''
 while 1:
     current_user = welcome()

@@ -173,7 +173,7 @@ def check_balance(user, date, selected_currency,buy_sell='None', **kwargs):
                                         on price_table.st_id = source_target_table.st_id
                                     where source_target_table.target = ? and price_table.timestamp = ?''', [selected_currency, date]).fetchone()[0]
             if currency_holdings[key][0] > 0: #short case
-                buying_power = buying_power - currency_holdings[key][0] + -1*(currency_holdings[key][1]/current_price)#net debt convert to current date usd
+                buying_power = buying_power + -1*(currency_holdings[key][1]/current_price) #- currency_holdings[key][0]#net debt convert to current date usd
             else: #long case
                 buying_power = buying_power + currency_holdings[key][0]  
         elif buy_sell == 'sell': #selling power = currency worth + buying power
@@ -184,7 +184,7 @@ def check_balance(user, date, selected_currency,buy_sell='None', **kwargs):
             if currency_holdings[key][0] > 0: #short case
                 buying_power = buying_power - currency_holdings[key][0] 
             else: #long case
-                buying_power = buying_power + currency_holdings[key][0] + (currency_holdings[key][1]/current_price)#newtworth of currency to current date usd
+                buying_power = buying_power  + (currency_holdings[key][1]/current_price)# + currency_holdings[key][0]#newtworth of currency to current date usd
 
     if selected_currency == 'all':
         return currency_holdings, starting_balance, buying_power
@@ -310,10 +310,11 @@ def sell(user, currency, amount, date, leverage = 25):
         msg = "\nYou can only short %s of USD now" % check_balance(user, date, currency)
     return msg
 
-def delete_all_transactions():
+def delete_all_transactions(username):
     connection = sqlite3.connect('algoforexdb.db')
     cursor = connection.cursor()
-    cursor.execute('''DELETE FROM transactions;''')
+    u_id = cursor.execute('''SELECT u_id FROM users WHERE username = ? ''', [username]).fetchone()[0]
+    cursor.execute('''DELETE FROM transactions where u_id = u_id;''')
     cursor.execute('''VACUUM;''')
     connection.commit()
     return 'Successfully deleted all transactions'
@@ -341,5 +342,86 @@ def get_real_time_currency_information(currency):
         msg.append('1 %s equals %s %s' % ('USD', current_price[currency], currency[3:]))
     return msg
 
-def strategy_1():
-    pass
+def algo_1(start_date, end_date, username):
+    def find_buy_point(df, currency):
+        df = df.loc[df['Target'] == currency]
+        df['Date'] = pd.to_datetime(df['Timestamp'])
+        df = df.sort_values(by='Date')
+        numbers = df.loc[:,['Timestamp', 'Price']].reset_index()
+        #print(numbers)
+        high_points = []
+        for index, row in numbers.loc[30:,['Timestamp', 'Price']].iterrows():
+            for i in reversed(range(30)):
+                if row['Price']/numbers.loc[index-i, 'Price']>1.06:
+                    #print("Found high point", row['Timestamp'])
+                    high_points.append(index)
+        high_points = set(high_points)
+        buy_points = {}
+        for index in high_points:
+            for j in range(1,len(numbers)-index):
+                if numbers.loc[index+j, 'Price'] > numbers.loc[index-i, 'Price']:
+                    break
+                if numbers.loc[index-i+j, 'Price'] / numbers.loc[index-i, 'Price']<.98:
+                    #print("Found retrive point", row['Timestamp'])
+                    buy_points[numbers.loc[index-i+j, 'Timestamp']] = 'buy'
+                    break
+        return buy_points
+
+    def find_sell_point(df, currency):
+        df = df.loc[df['Target'] == currency]
+        df['Date'] = pd.to_datetime(df['Timestamp'])
+        df = df.sort_values(by='Date')
+        numbers = df.loc[:,['Timestamp', 'Price']].reset_index()
+        #print(numbers)
+        low_points = []
+        for index, row in numbers.loc[30:,['Timestamp', 'Price']].iterrows():
+            for i in reversed(range(30)):
+                if row['Price']/numbers.loc[index-i, 'Price']<.94:
+                    #print("Found high point", row['Timestamp'])
+                    low_points.append(index)
+        low_points = set(low_points)
+        sell_points = {}
+        for index in low_points:
+            for j in range(1,len(numbers)-index):
+                if numbers.loc[index+j, 'Price'] < numbers.loc[index-i, 'Price']:
+                    break
+                if numbers.loc[index-i+j, 'Price'] / numbers.loc[index-i, 'Price']>1.02:
+                    #print("Found retrive point", row['Timestamp'])
+                    sell_points[numbers.loc[index-i+j, 'Timestamp']] = 'sell'
+                    break
+        return sell_points
+    delete_all_transactions('nan')
+    #get all data in 5 currencies from start date to end date
+    connection = sqlite3.connect('algoforexdb.db')
+    cursor = connection.cursor()
+    all_data = cursor.execute('''
+        SELECT source, target, price, timestamp 
+        from price_table join source_target_table 
+        on price_table.st_id = source_target_table.st_id 
+        where price_table.timestamp between ? and ? 
+        and source_target_table.target in (?,?,?,?,?) ''', (start_date, end_date, 'JPY', 'CNY', 'GBP', 'CAD', 'EUR')).fetchall()
+    df = pd.DataFrame(all_data, columns=['Source', 'Target', 'Price', 'Timestamp'])
+    buy_sell_points = []
+    for currency in ['JPY', 'CNY', 'GBP', 'CAD', 'EUR']:
+        for key, value in find_buy_point(df, currency).items():
+            buy_sell_points.append([key, value, currency])
+        for key, value in find_sell_point(df, currency).items():
+            buy_sell_points.append([key, value, currency])
+    bs = pd.DataFrame(buy_sell_points, columns=['Timestamp', 'BS', 'Currency'])
+    bs['Dates'] = pd.to_datetime(bs['Timestamp'])
+    bs_order = bs.sort_values(by='Dates')
+    for index, row in bs_order.iterrows():
+        #print(row)
+        if row['BS'] == 'buy':
+            amount = check_balance(username,  row['Timestamp'], row['Currency'],'buy')/25/5
+            print('Buy', amount, row['Timestamp'], row['Currency'])
+            buy(username, row['Currency'], amount, row['Timestamp'], leverage = 25)
+        elif row['BS'] == 'sell':
+            amount = check_balance(username,  row['Timestamp'], row['Currency'],'sell')/25/5
+            print('Sell',amount, row['Timestamp'], row['Currency'])
+            sell(username, row['Currency'], amount, row['Timestamp'], leverage = 25)
+        print("Balance:",check_balance(username,  row['Timestamp'], 'all','sell'))
+    #print(buy_sell_points)
+    #find pattern days, return currency, day, b/s pairs
+
+    #buy/sell on these days

@@ -23,8 +23,9 @@
     <option value='L'>5.Look-up currency price on a date</option>
     <option value='LR'>6.Look-up real-time currency price</option>
     <option value='V'>7.View Balance on a date</option>
-    <option value='P'>8.See P/L between 2 dates</option>
-    <option value='E'>9.Logout</option>
+    <option value='A1'>8.Run algo#1 between 2 dates and see P/L</option>
+    <option value='P'>9.See P/L between 2 dates</option>
+    <option value='E'>10.Logout</option>
     <input type="submit" value="Submit">
     </select>
     <br />
@@ -103,6 +104,13 @@
         <input name="date" id="date">
       {% endif %}
     {% elif (choice == 'P') %}
+        <form method="post">
+          <label for="start_date"><br />Enter start date (YYYY-MM-DD):  </label>
+          <input name="start_date" id="start_date">
+          <label for="end_date"><br />Enter end date (YYYY-MM-DD):  </label>
+          <input name="end_date" id="end_date">
+        </form>
+    {% elif (choice == 'A1') %}
         <form method="post">
           <label for="start_date"><br />Enter start date (YYYY-MM-DD):  </label>
           <input name="start_date" id="start_date">
