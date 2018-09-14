@@ -390,7 +390,7 @@ def algo_1(start_date, end_date, username):
                     sell_points[numbers.loc[index-i+j, 'Timestamp']] = 'sell'
                     break
         return sell_points
-    delete_all_transactions('nan')
+    delete_all_transactions(username)
     #get all data in 5 currencies from start date to end date
     connection = sqlite3.connect('algoforexdb.db')
     cursor = connection.cursor()
@@ -417,7 +417,8 @@ def algo_1(start_date, end_date, username):
             print('Buy', amount, row['Timestamp'], row['Currency'])
             buy(username, row['Currency'], amount, row['Timestamp'], leverage = 25)
         elif row['BS'] == 'sell':
-            amount = check_balance(username,  row['Timestamp'], row['Currency'],'sell')/25/5
+            amount = check_balance(u
+        low_points = []sername,  row['Timestamp'], row['Currency'],'sell')/25/5
             print('Sell',amount, row['Timestamp'], row['Currency'])
             sell(username, row['Currency'], amount, row['Timestamp'], leverage = 25)
         print("Balance:",check_balance(username,  row['Timestamp'], 'all','sell'))
