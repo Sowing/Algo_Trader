@@ -49,7 +49,7 @@ def hello_world():
         balance.append(model.check_portfolio('nan', DATE)[1])
         date.append(single_date)
         performance = 0
-        for key, value in build_index(DATE).iteritems():
+        for key, value in build_index(DATE).items():
             performance = base_index[key]*1.0/value + performance
         market.append(performance*20000)
         
